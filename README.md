@@ -1,10 +1,24 @@
 # miRNA seq pipeline with Nextflow, Apptainer, and PBS 
 
-## IsomiR analysis steps 
+## Overview 
 
-1. FastQC quality check 
+This repository is part of an end-to-end data processing project that analyses isomiR datasets, from raw .fastq files to visualization. Figure 1 shows the high-level data analysis process. Steps highlighted in yellow are performed on the HPC (this repository), while steps in green are executed on a local machine. Currently, we are facing difficulties integrating the Fastx Toolkit into the pipeline. As a result, it must be run on Galaxy, and the rest of the workflow is not yet fully integrated. In the future, we plan to consolidate all steps into a single pipeline.
 
-2. Cleaning reads with Cutadapt
+![Figure](./img/pipeline_overview.png)
+
+In summary, to run the entire project you must do these in sequence: 
+1. Run the data pipeline of this repository. 
+2. Prepare inputs for isomiR-SEA 
+3. Run isomiR-SEA [here](https://eda.polito.it/isomir-sea/)
+4. Run EMMA analyzer [here](https://github.com/daysay24/E.M.M.A-Enhanced-Multispecies-IsomiR-Analyzer-Tool) 
+
+## miRNA seq pipeline
+
+### Quality check raw datasets 
+#### FastQC quality check 
+
+### Preprocess datasets 
+#### Cleaning reads with Cutadapt
 - Remove 3` adapter AACTGTAGGCACCATCAAT (QIAseq miRNA Kit)
 - Remove 5` adapter GTTCAGAGTTCTACAGTCCGACGATC (QIAseq miRNA Kit)
 - Max error rate = 0.1
@@ -12,9 +26,9 @@
 - Max length = 28
 - Quality cutoff at 3’ = 20
 
-3. FastQC quality check (after trimming reads)
+#### FastQC quality check (after trimming reads)
 
-4. Alignment with Bowtie2
+#### Alignment with Bowtie2
 - Single library
 - Write aligned reads to separate file
 - Use the species genome for alignment
@@ -188,11 +202,6 @@ With _process.container = '$baseDir/apptainerdef/speedx-rnaseq.sif', process.exe
 5. Starts an Apptainer container and runs the commands in scratch directory of container. Hence, the outputs will appear in scratch of host as well. 
 6. Move the output files from scratch to the shared working directory.
 7. Deletes the scratch directory in the computing node.
-
-## To do 
-1. Extract, annotate, visualise DE genes
-2. GO analysis
-3. KEGG path analysis
 
 ## Resources: 
 
