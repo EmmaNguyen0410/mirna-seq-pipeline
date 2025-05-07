@@ -1,0 +1,6 @@
+.nextflow
+work
+results
+data
+bin/isomiR-SEA_1.6_webpacket
+apptainerdef/speedx-rnaseq.sif

@@ -1,0 +1,21 @@
+Bootstrap: docker
+From: mambaorg/micromamba:1.5.10-noble
+
+%labels
+    Author: Emma Nguyen
+    Version: 1.0
+
+%setup
+    mkdir -p ${APPTAINER_ROOTFS}/opt
+    mkdir -p ${APPTAINER_ROOTFS}/scratch
+    mkdir -p ${APPTAINER_ROOTFS}/shared
+
+%files
+    environment.yml /opt/environment.yml
+
+%post
+    micromamba install -y -n base -f /opt/environment.yml 
+    micromamba clean -a -y
+
+%environment
+    export PATH=/opt/conda/bin:$PATH
