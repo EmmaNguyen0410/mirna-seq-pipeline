@@ -1,4 +1,24 @@
-# RNA seq pipeline with Nextflow, Apptainer, and PBS 
+# miRNA seq pipeline with Nextflow, Apptainer, and PBS 
+
+## IsomiR analysis steps 
+
+1. FastQC quality check 
+
+2. Cleaning reads with Cutadapt
+- Remove 3` adapter AACTGTAGGCACCATCAAT (QIAseq miRNA Kit)
+- Remove 5` adapter GTTCAGAGTTCTACAGTCCGACGATC (QIAseq miRNA Kit)
+- Max error rate = 0.1
+- Min length = 15
+- Max length = 28
+- Quality cutoff at 3’ = 20
+
+3. FastQC quality check (after trimming reads)
+
+4. Alignment with Bowtie2
+- Single library
+- Write aligned reads to separate file
+- Use the species genome for alignment
+- Very sensitive end-to-end (--very-sensitive)
 
 ## Tools and their pararmeters configuration 
 
@@ -7,14 +27,21 @@ This is a list of all tools used in this project and explanation for their usage
 1. Fastqc
 
 ```
-fastqc -t 2 -o fastqc_${sample_id}_logs -f fastq -q ${reads}
+fastqc -o fastqc_${read.baseName}_logs -f fastq -q ${read}
 ```
 __-t__: works on file basis i.e one _thread_ per file. 
 
 2. [Cutadapt](https://cutadapt.readthedocs.io/en/v4.8/guide.html#basic-usage)
 
 ```
-cutadapt -q 20 -m 20 -j 8 -o trimmed_${sample_id}_1.fastq -p trimmed_${sample_id}_2.fastq $reads
+cutadapt --compression-level=2 \
+-a AACTGTAGGCACCATCAAT \
+-g GTTCAGAGTTCTACAGTCCGACGATC \
+-q 20 \
+-m 15 \
+-M 28 \
+-j 5 \
+-o trimmed_${read.baseName}.gz $read
 ```
 
 Whether an input file needs to be decompressed or an output file needs to be compressed is detected automatically by inspecting the file name. Because all output files are short-lived intermediate files, so they are not compressed to speed up the process (output file not ending with .gz). 
@@ -23,36 +50,21 @@ __-q__ (or --quality-cutoff): trim low-quality ends from reads. If you specify
 
 __-m__: Discard processed reads that are shorter than LENGTH.
 
-__-j 8__: Increasing the number of _cores_ with -j will increase the number of reads per minute at near-linear rate.
+__-j 5__: Increasing the number of _cores_ with -j will increase the number of reads per minute at near-linear rate.
 
 __-p__: By default, all processed reads, no matter whether they were trimmed or not, are written to the output file specified by the -o option (or to standard output if -o was not provided). For paired-end reads, the second read in a pair is always written to the file specified by the -p option.
 
 3. [Bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml)
 
 ```
-bowtie2 -p 8 --very-sensitive -x bowtie2_index/ggal -1 ${trimmed_reads[0]} -2 ${trimmed_reads[1]} -S mapped_${sample_id}.sam
+bowtie2 -p 5 \
+--very-sensitive \
+-x $params.bowtie2_index/hsa \
+-U ${read} \
+-S mapped_${read.baseName}.sam \
+--al-gz mapped_${read.baseName}.fasta.gz \
 ```
-__-p 8__: _Threads_ will run on separate processors/cores and synchronize when parsing reads and outputting alignments. Searching for alignments is highly parallel, and speedup is close to linear. Increasing -p increases Bowtie 2's memory footprint. E.g. when aligning to a human genome index, increasing -p from 1 to 8 increases the memory footprint by a few hundred megabytes. This option is only available if bowtie is linked with the pthreads library (i.e. if BOWTIE_PTHREADS=0 is not specified at build time).
-
-4. [Samtools](https://www.htslib.org/doc/samtools-sort.html)
-
-```
-samtools sort -n -o mapped_${sample_id}_sorted.bam ${bam} 
-```
-
-__-n__: Sort by read names (i.e., the QNAME field) using an alpha-numeric ordering, rather than by chromosomal coordinates. 
-
-5. [Htseq](https://htseq.readthedocs.io/en/release_0.11.1/count.html)
-
-```
-htseq-count -n 2 -f bam -r name -m union -s reverse -t exon -i gene_id mapped_${sample_id}_sorted.bam ${gff} > counts_${sample_id}.txt
-```
-
-__-r name__: For paired-end data, the alignment have to be sorted either by read name or by alignment position. 
-
-__-s reverse__: The second read has to be on the same strand and the first read on the opposite strand. 
-
-6. [Deseq2](https://master.bioconductor.org/packages/release/workflows/vignettes/rnaseqGene/inst/doc/rnaseqGene.html)
+__-p 5__: _Threads_ will run on separate processors/cores and synchronize when parsing reads and outputting alignments. Searching for alignments is highly parallel, and speedup is close to linear. Increasing -p increases Bowtie 2's memory footprint. E.g. when aligning to a human genome index, increasing -p from 1 to 8 increases the memory footprint by a few hundred megabytes. This option is only available if bowtie is linked with the pthreads library (i.e. if BOWTIE_PTHREADS=0 is not specified at build time).
 
 ## Resources request
 
@@ -166,7 +178,7 @@ nextflow run main.nf -profile apptainer
 5. Check jobs submitted 
 
 ## Pipeline explanation 
-
+s
 With _process.container = '$baseDir/apptainerdef/speedx-rnaseq.sif', process.executor = 'pbspro', apptainer.enabled = true, process.scratch = /scratch/u162557, Nextflow: 
 
 1. Submits a job to a computing note. 
